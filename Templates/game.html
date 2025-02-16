@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Shooter Game</title>
+    <style>
+        body { margin: 0; overflow: hidden; }
+        canvas { display: block; }
+    </style>
+</head>
+<body>
+    <canvas id="gameCanvas"></canvas>
+    <script>
+        const canvas = document.getElementById("gameCanvas");
+        const ctx = canvas.getContext("2d");
+
+        let playerX, playerY, enemies, bullets, score, width, height, playerSize, enemySize, bulletSize;
+
+        function getGameData() {
+            fetch("/game_data")
+                .then(response => response.json())
+                .then(data => {
+                    playerX = data.player_x;
+                    playerY = data.player_y;
+                    enemies = data.enemies;
+                    bullets = data.bullets;
+                    score = data.score;
+                    width = data.width;
+                    height = data.height;
+                    playerSize = data.player_size;
+                    enemySize = data.enemy_size;
+                    bulletSize = data.bullet_size;
+                    canvas.width = width;
+                    canvas.height = height;
+                    gameLoop();
+                });
+        }
+
+        function updatePlayer(x) {
+            fetch("/update_player", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ x: x })
+            });
+        }
+
+        function shoot() {
+            fetch("/shoot", { method: "POST" });
+        }
+
+        function updateGame() {
+          fetch("/update_game", { method: "POST" })
+            .then(response => response.json())
+            .then(data => {
+                if (data.game_over) {
+                    alert("Game Over!");
+                    location.reload(); // Simple restart
+                } else {
+                  getGameData(); // Refresh the game data for the next frame
+                }
+            });
+        }
+
+        function drawPlayer() {
+            ctx.fillStyle = "blue";
+            ctx.fillRect(playerX, playerY, playerSize, playerSize);
+        }
+
+        function drawEnemies() {
+            ctx.fillStyle = "red";
+            for (const enemy of enemies) {
+                ctx.fillRect(enemy.x, enemy.y, enemySize, enemySize);
+            }
+        }
+
+        function drawBullets() {
+            ctx.fillStyle = "green";
+            for (const bullet of bullets) {
+                ctx.fillRect(bullet.x, bullet.y, bulletSize, bulletSize);
+            }
+        }
+
+        function drawScore() {
+            ctx.fillStyle = "black";
+            ctx.font = "20px Arial";
+            ctx.fillText("Score: " + score, 10, 30);
+        }
+
+        function gameLoop() {
+            ctx.clearRect(0, 0, width, height);
+            drawPlayer();
+            drawEnemies();
+            drawBullets();
+            drawScore();
+            updateGame(); // Important: Update game state *before* the next frame
+            requestAnimationFrame(gameLoop);
+        }
+
+        document.addEventListener("keydown", (e) => {
+            if (e.key === "ArrowLeft" && playerX > 0) {
+                updatePlayer(playerX - 10); // Adjust movement step as needed
+            } else if (e.key === "ArrowRight" && playerX < width - playerSize) {
+                updatePlayer(playerX + 10);
+            } else if (e.key === " ") { // Spacebar to shoot
+                shoot();
+            }
+        });
+
+        getGameData(); // Initial data fetch
+    </script>
+</body>
+  </html>
+  
